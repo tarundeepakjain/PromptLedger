@@ -1,14 +1,16 @@
+export type UseCase =
+  | "coding"
+  | "writing"
+  | "research"
+  | "data"
+  | "mixed"
+
 export interface ToolUsage{
     tool:string
     plan:string
     monthlySpend:number
     seats:number
-    useCase:
-        | "coding"
-        | "writing"
-        | "research"
-        | "data"
-        | "mixed"
+    useCase: UseCase
 }
 
 export interface AuditInput{
