@@ -1,8 +1,8 @@
 export interface ToolUsage{
-    tool:string,
-    plan:string,
-    monthlySpend:number,
-    seats:number,
+    tool:string
+    plan:string
+    monthlySpend:number
+    seats:number
     useCase:
         | "coding"
         | "writing"
@@ -12,7 +12,7 @@ export interface ToolUsage{
 }
 
 export interface AuditInput{
-    teamSize:number,
+    teamSize:number
     tools:ToolUsage[]
 }
 
@@ -20,8 +20,8 @@ export interface ToolAuditResult {
   currentTool: string
   currentPlan: string
 
-  recommendedTool: string
-  recommendedPlan: string
+  recommendedTool?: string
+  recommendedPlan?: string
 
   currentMonthlySpend: number
   optimizedMonthlySpend: number
