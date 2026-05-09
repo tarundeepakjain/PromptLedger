@@ -42,3 +42,23 @@ export interface AuditResult {
   summary: string
   toolResults: ToolAuditResult[]
 }
+
+export interface aiPlan {
+  tool: string
+  plan: string
+  useCases: UseCase[]
+  capabilityLevel: number
+  minTeamSize: number
+  maxTeamSize: number
+  monthlyPrice: number
+}
+
+export interface apiPlan {
+  tool: string
+  plan: string
+  useCases: UseCase[]
+  capabilityLevel: number
+  inputPricePerMTok: number
+  outputPricePerMTok: number
+  enterpriseReady: boolean
+}

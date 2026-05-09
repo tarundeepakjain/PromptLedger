@@ -1,4 +1,9 @@
-export const aiPlans = [
+import {
+  aiPlan,
+  apiPlan
+} from "./types"
+
+export const aiPlans:aiPlan[] = [
     //Cursor
   {
     tool: "Cursor",
@@ -239,7 +244,7 @@ export const aiPlans = [
 
 ]
 
-export const api_direct = [
+export const api_direct:apiPlan[] = [
   //Anthropic API
   {
     tool: "AnthropicAPI",
