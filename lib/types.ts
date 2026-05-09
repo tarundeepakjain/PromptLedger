@@ -58,7 +58,7 @@ export interface apiPlan {
   plan: string
   useCases: UseCase[]
   capabilityLevel: number
-  inputPricePerMTok: number | null
-  outputPricePerMTok: number | null
+  inputPricePerMTok: number 
+  outputPricePerMTok: number 
   enterpriseReady: boolean
 }
