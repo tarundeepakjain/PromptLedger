@@ -50,7 +50,7 @@ export interface aiPlan {
   capabilityLevel: number
   minTeamSize: number
   maxTeamSize: number
-  monthlyPrice: number
+  monthlyPrice: number | null
 }
 
 export interface apiPlan {
@@ -58,7 +58,7 @@ export interface apiPlan {
   plan: string
   useCases: UseCase[]
   capabilityLevel: number
-  inputPricePerMTok: number
-  outputPricePerMTok: number
+  inputPricePerMTok: number | null
+  outputPricePerMTok: number | null
   enterpriseReady: boolean
 }
