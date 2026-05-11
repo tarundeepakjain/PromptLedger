@@ -5,7 +5,7 @@ import { AuditInput } from "@/lib/types"
 export async function POST(req: NextRequest){
     try{
         const body: AuditInput = await req.json()
-        const auditResult = generateAudit(body)
+        const auditResult = await generateAudit(body)
         return NextResponse.json(
             {
                 success: true,
