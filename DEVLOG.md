@@ -163,3 +163,41 @@
 
 **Reason for no work today:**
 - University tests and academic preparation occupied the full day
+
+---
+
+## Day 5 - 2026-05-11
+
+**Hours Worked :** 2
+
+**What I did:**
+- Implemented Gemini-powered AI-generated audit summaries with graceful fallback handling
+- Added prompt engineering documentation in `PROMPTS.md`
+- Integrated Supabase lead storage for audit submissions
+- Integrated Resend transactional email workflow for audit confirmation emails
+- Added Upstash Redis based API rate limiting for abuse prevention
+- Improved backend modularity by separating audit, lead, email, and rate-limiting logic into dedicated utility files
+
+**What I learned:**
+- AI features become significantly more reliable when deterministic fallback systems are implemented alongside them
+- Building production-style backend architecture requires careful separation of concerns between APIs, services, and database layers
+- Sometimes initial implementation plans do not work efficiently in practice, and a clearer architectural approach becomes necessary while progressing through the project
+- Normalized relational database design improves scalability and maintainability for complex result structures like audit reports and tool-level optimizations
+
+**What I'm stuck on:**
+- Frontend implementation and UI integration are still pending
+- Shareable audit page rendering and Open Graph metadata integration still need frontend work
+
+**Plans for tommorow:**
+- Complete all frontend UI work including:
+  - audit input flow
+  - audit result visualization
+  - recommendation cards
+  - shareable audit report page
+- Implement frontend integration with backend APIs
+- Add Open Graph and Twitter metadata for shareable reports
+- Implement tests for backend audit logic and APIs
+- Add CI workflow configuration
+- Complete `ARCHITECTURE.md`
+- Complete `REFLECTION.md`
+- Finalize overall frontend polish and responsive design
