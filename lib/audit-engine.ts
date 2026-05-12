@@ -15,6 +15,51 @@ import {
     getTotalAPIPrice
 } from "./matching"
 
+import { supabase } from "./supabase"
+
+async function saveAuditResult(auditResult:AuditResult) {
+
+  const { data: audit, error: auditError } = await supabase
+    .from("audits")
+    .insert([
+      {
+        total_current_monthly_spend:auditResult.totalCurrentMonthlySpend,
+        total_optimized_monthly_spend:auditResult.totalOptimizedMonthlySpend,
+        total_monthly_savings:auditResult.totalMonthlySavings,
+        total_annual_savings:auditResult.totalAnnualSavings
+      }
+    ])
+    .select()
+    .single()
+
+  if (auditError) {
+    throw auditError
+  }
+
+  const toolResults = auditResult.toolResults.map((tool:ToolAuditResult) => ({
+    audit_id: audit.id,
+    current_tool: tool.currentTool,
+    current_plan: tool.currentPlan,
+    recommended_tool: tool.recommendedTool,
+    recommended_plan: tool.recommendedPlan,
+    current_monthly_spend: tool.currentMonthlySpend,
+    optimized_monthly_spend: tool.optimizedMonthlySpend,
+    monthly_savings: tool.monthlySavings,
+    annual_savings: tool.annualSavings,
+    reason: tool.reason
+  }))
+
+  const { error: toolResultsError } = await supabase
+    .from("audit_tool_results")
+    .insert(toolResults)
+
+  if (toolResultsError) {
+    throw toolResultsError
+  }
+
+  return audit
+}
+
 export async function generateAudit(data: AuditInput): Promise<AuditResult>{
 
     let totalCurrentMonthlySpend = 0
@@ -154,12 +199,8 @@ export async function generateAudit(data: AuditInput): Promise<AuditResult>{
         )
 
         if (response.ok) {
-
             const data = await response.json()
-
-            const aiSummary =
-            data?.candidates?.[0]?.content?.parts?.[0]?.text
-
+            const aiSummary = data?.candidates?.[0]?.content?.parts?.[0]?.text
             if (aiSummary) {
             summary = aiSummary.trim()
             }
@@ -176,6 +217,12 @@ export async function generateAudit(data: AuditInput): Promise<AuditResult>{
         totalAnnualSavings,
         summary,
         toolResults
+    }
+
+    try{
+        const audit = await saveAuditResult(result)
+    }catch(error){
+        console.error("Audit not saved publicly in supabase.",error)
     }
 
     return result
