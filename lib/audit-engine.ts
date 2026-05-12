@@ -12,7 +12,6 @@ import {
     findCheapestAlternativeTool,
     findCheapestSameVendorAPI,
     findCheapestAlternativeAPI,
-    getTotalAPIPrice
 } from "./matching"
 
 import { supabase } from "./supabase"
@@ -60,7 +59,12 @@ async function saveAuditResult(auditResult:AuditResult) {
   return audit
 }
 
-export async function generateAudit(data: AuditInput): Promise<AuditResult>{
+function calcAPISpend(plan: apiPlan, inputTokens: number, outputTokens: number): number {
+    const cost = (plan.inputPricePerMTok * inputTokens) + (plan.outputPricePerMTok * outputTokens)
+    return Math.round(cost * 100) / 100
+}
+
+export async function generateAudit(data: AuditInput): Promise<any>{
 
     let totalCurrentMonthlySpend = 0
     let totalOptimizedMonthlySpend = 0
@@ -69,66 +73,79 @@ export async function generateAudit(data: AuditInput): Promise<AuditResult>{
 
     for(const tool of data.tools){
 
-        totalCurrentMonthlySpend += tool.monthlySpend
-
         const currentPlan = findCurrentPlan(tool.tool,tool.plan)
         if(!currentPlan){continue}
 
         let recommendedTool = tool.tool
         let recommendedPlan = tool.plan
-        let optimizedMonthlySpend = tool.monthlySpend
+        let currentMonthlySpend = 0
+        let optimizedMonthlySpend = 0
         let reason = "Current setup appears optimized."
-      
+
         //API
         if(tool.tool.includes("API")){
 
-            const sameVendorAPI = findCheapestSameVendorAPI(currentPlan as apiPlan,tool.useCase)
+            const inputTokens = tool.inputTokens ?? 1
+            const outputTokens = tool.outputTokens ?? 1
 
-            if(sameVendorAPI){
+            currentMonthlySpend = calcAPISpend(currentPlan as apiPlan, inputTokens, outputTokens)
+            optimizedMonthlySpend = currentMonthlySpend
+
+            const sameVendorAPI = findCheapestSameVendorAPI(currentPlan as apiPlan, tool.useCase)
+            const alternativeAPI = findCheapestAlternativeAPI(currentPlan as apiPlan, tool.useCase)
+
+            const sameVendorPrice = sameVendorAPI
+                ? calcAPISpend(sameVendorAPI, inputTokens, outputTokens)
+                : Infinity
+
+            const alternativePrice = alternativeAPI
+                ? calcAPISpend(alternativeAPI, inputTokens, outputTokens)
+                : Infinity
+
+            if(alternativeAPI && alternativePrice < sameVendorPrice && alternativePrice < currentMonthlySpend){
+                recommendedTool = alternativeAPI.tool
+                recommendedPlan = alternativeAPI.plan
+                optimizedMonthlySpend = alternativePrice
+                reason = "A cheaper API provider offers similar capability for the reported workload."
+            }else if(sameVendorAPI && sameVendorPrice < currentMonthlySpend){
                 recommendedTool = sameVendorAPI.tool
                 recommendedPlan = sameVendorAPI.plan
-                optimizedMonthlySpend = getTotalAPIPrice(sameVendorAPI)
-                reason ="A lower-cost API model from the same provider can handle the reported workload."
-            }else{
-                const alternativeAPI = findCheapestAlternativeAPI(currentPlan as apiPlan,tool.useCase)
-
-                if(alternativeAPI){
-                    recommendedTool = alternativeAPI.tool
-                    recommendedPlan = alternativeAPI.plan
-                    optimizedMonthlySpend = getTotalAPIPrice(alternativeAPI)
-                    reason ="A cheaper API provider offers similar capability for the reported workload."
-                }
+                optimizedMonthlySpend = sameVendorPrice
+                reason = "A lower-cost API model from the same provider can handle the reported workload."
             }
+
         }else{
           //Subscription
-            const sameVendorPlan = findCheapestSameVendorPlan(currentPlan as aiPlan,data.teamSize,tool.useCase)
+            currentMonthlySpend = tool.monthlySpend ?? 0
+            optimizedMonthlySpend = currentMonthlySpend
 
-            if(sameVendorPlan){
+            const sameVendorPlan = findCheapestSameVendorPlan(currentPlan as aiPlan,data.teamSize,tool.useCase)
+            const alternativeTool = findCheapestAlternativeTool(currentPlan as aiPlan,data.teamSize,tool.useCase)
+
+            if(alternativeTool &&(alternativeTool.monthlyPrice ?? Infinity)<(sameVendorPlan?.monthlyPrice ?? Infinity)){
+                recommendedTool = alternativeTool.tool
+                recommendedPlan = alternativeTool.plan
+                optimizedMonthlySpend = alternativeTool.monthlyPrice ?? currentMonthlySpend
+                reason = "A cheaper alternative tool provides similar capability for the reported workflow."
+            }else if(sameVendorPlan){
                 recommendedTool = sameVendorPlan.tool
                 recommendedPlan = sameVendorPlan.plan
-                optimizedMonthlySpend = sameVendorPlan.monthlyPrice ?? tool.monthlySpend
+                optimizedMonthlySpend = sameVendorPlan.monthlyPrice ?? currentMonthlySpend
                 reason = "A lower-cost plan from the same vendor satisfies the reported usage."
-            }else{
-                const alternativeTool = findCheapestAlternativeTool(currentPlan as aiPlan,data.teamSize,tool.useCase)
-
-                if(alternativeTool){
-                    recommendedTool = alternativeTool.tool
-                    recommendedPlan = alternativeTool.plan
-                    optimizedMonthlySpend = alternativeTool.monthlyPrice ?? tool.monthlySpend
-                    reason = "A cheaper alternative tool provides similar capability for the reported workflow."
-                }
             }
         }
 
-        const monthlySavings = tool.monthlySpend - optimizedMonthlySpend
-        const annualSavings = monthlySavings * 12
+        totalCurrentMonthlySpend += currentMonthlySpend
+
+        const monthlySavings = Math.round((currentMonthlySpend - optimizedMonthlySpend) * 100) / 100
+        const annualSavings = Math.round(monthlySavings * 12 * 100) / 100
 
         const result: ToolAuditResult = {
             currentTool: tool.tool,
             currentPlan: tool.plan,
             recommendedTool,
             recommendedPlan,
-            currentMonthlySpend: tool.monthlySpend,
+            currentMonthlySpend,
             optimizedMonthlySpend,
             monthlySavings,
             annualSavings,
@@ -140,8 +157,11 @@ export async function generateAudit(data: AuditInput): Promise<AuditResult>{
         totalOptimizedMonthlySpend += optimizedMonthlySpend
     }
 
-    const totalMonthlySavings = totalCurrentMonthlySpend - totalOptimizedMonthlySpend
-    const totalAnnualSavings = totalMonthlySavings * 12
+    totalCurrentMonthlySpend = Math.round(totalCurrentMonthlySpend * 100) / 100
+    totalOptimizedMonthlySpend = Math.round(totalOptimizedMonthlySpend * 100) / 100
+
+    const totalMonthlySavings = Math.round((totalCurrentMonthlySpend - totalOptimizedMonthlySpend) * 100) / 100
+    const totalAnnualSavings = Math.round(totalMonthlySavings * 12 * 100) / 100
 
     let fallbackSummary = "Your current AI stack appears reasonably optimized."
 
@@ -219,11 +239,15 @@ export async function generateAudit(data: AuditInput): Promise<AuditResult>{
         toolResults
     }
 
+    let audit = null
     try{
-        const audit = await saveAuditResult(result)
+        audit = await saveAuditResult(result)
     }catch(error){
         console.error("Audit not saved publicly in supabase.",error)
     }
 
-    return result
+    return {
+        ...result,
+        id: audit?.id || null
+    }
 }

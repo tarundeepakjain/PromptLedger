@@ -37,11 +37,10 @@ export function findCheapestSameVendorPlan(currentPlan: aiPlan, teamSize:number,
       if(candidate.tool!==currentPlan.tool){return false}
       if(candidate.plan===currentPlan.plan){return false}
       if(!canHandleUseCase(useCase,candidate.useCases)){return false}
-      if(!hasEnoughCapability(currentPlan.capabilityLevel,candidate.capabilityLevel)){return false}
       if(!isTeamCompatible(teamSize,candidate.minTeamSize,candidate.maxTeamSize)){return false}
 
-      /*Ignore enterprise/custom pricing*/
       if(candidate.monthlyPrice===null){return false}
+      if(candidate.monthlyPrice===0){return false}
       if(candidate.monthlyPrice>=(currentPlan.monthlyPrice ?? Infinity)){return false}
       return true
     })
@@ -58,11 +57,10 @@ export function findCheapestAlternativeTool(currentPlan: aiPlan, teamSize:number
     const matchingPlans = aiPlans.filter((candidate)=>{
       if(candidate.tool===currentPlan.tool){return false}
       if(!canHandleUseCase(useCase,candidate.useCases)){return false}
-      if(!hasEnoughCapability(currentPlan.capabilityLevel,candidate.capabilityLevel)){return false}
       if(!isTeamCompatible(teamSize,candidate.minTeamSize,candidate.maxTeamSize)){return false}
 
-      /*Ignore enterprise/custom pricing*/
       if(candidate.monthlyPrice===null){return false}
+      if(candidate.monthlyPrice===0){return false}
       if(candidate.monthlyPrice>=(currentPlan.monthlyPrice ?? Infinity)){return false}
       return true
     })

@@ -8,9 +8,11 @@ export type UseCase =
 export interface ToolUsage{
     tool:string
     plan:string
-    monthlySpend:number
-    seats:number
+    monthlySpend?:number
+    seats?:number
     useCase: UseCase
+    inputTokens?: number
+    outputTokens?: number
 }
 
 export interface AuditInput{
@@ -21,16 +23,12 @@ export interface AuditInput{
 export interface ToolAuditResult {
   currentTool: string
   currentPlan: string
-
-  recommendedTool?: string
-  recommendedPlan?: string
-
+  recommendedTool: string
+  recommendedPlan: string
   currentMonthlySpend: number
   optimizedMonthlySpend: number
-
   monthlySavings: number
   annualSavings: number
-
   reason: string
 }
 
@@ -39,7 +37,7 @@ export interface AuditResult {
   totalOptimizedMonthlySpend: number
   totalMonthlySavings: number
   totalAnnualSavings: number
-  summary: string
+  summary?: string
   toolResults: ToolAuditResult[]
 }
 
@@ -61,4 +59,10 @@ export interface apiPlan {
   inputPricePerMTok: number 
   outputPricePerMTok: number 
   enterpriseReady: boolean
+}
+
+export interface FormState {
+  teamSize: number;
+  selectedTools: string[];
+  toolEntries: ToolUsage[];
 }
