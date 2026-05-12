@@ -201,3 +201,39 @@
 - Complete `ARCHITECTURE.md`
 - Complete `REFLECTION.md`
 - Finalize overall frontend polish and responsive design
+
+---
+
+## Day 6 - 2026-05-12
+
+**Hours Worked :** 6
+
+**What I did:**
+- Built the first complete frontend prototype for the application with core pages and reusable UI components
+- Added branding assets and SVG logos for supported AI providers and integrations
+- Improved audit engine recommendation logic for both subscription-based tools and API-based tools
+- Fixed same-vendor recommendation handling where valid cheaper alternatives were not being surfaced correctly
+- Refactored tool usage data structures and updated audit input/output handling for cleaner matching logic
+- Added normalized audit result IDs to support publicly shareable audit URLs and easier audit retrieval
+- Improved API pricing calculations for monthly and annual spend estimation in the audit engine
+- Enhanced cross-vendor matching logic to generate more realistic optimization recommendations
+- Refined audit summaries and savings calculations for edge cases where users were already on optimized plans
+- Continued modularizing matching and pricing utilities to keep recommendation logic maintainable and scalable
+
+**What I learned:**
+- Recommendation systems become significantly more reliable when same-vendor and cross-vendor logic are handled separately instead of through a shared generic matcher
+- Small inconsistencies in pricing models or capability matching can completely change optimization results, so deterministic validation is critical
+- Designing reusable frontend components early makes later backend integration much easier and cleaner
+- Publicly shareable audit systems require careful separation between internal audit storage and public-facing identifiers
+
+**What I'm stuck on:**
+- Frontend and backend integration still needs complete end-to-end testing
+- Shareable audit pages still need final metadata validation and production-level polish
+- Automated test coverage for audit engine edge cases is still pending
+
+**Plans for tomorrow:**
+- Complete shareable public audit page flow
+- Add and verify Open Graph/Twitter metadata rendering
+- Write automated tests for audit engine recommendation scenarios
+- Add GitHub Actions workflow for linting and tests
+- Complete remaining documentation files including architecture and reflection notes
