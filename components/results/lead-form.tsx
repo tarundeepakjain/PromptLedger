@@ -25,7 +25,13 @@ export default function LeadForm({ teamSize = 5, monthlySavings = 0, annualSavin
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, teamSize, monthlySavings, annualSavings }),
+        body: JSON.stringify({
+          ...form,
+          teamSize,
+          monthlySavings,
+          annualSavings,
+          auditUrl: window.location.href,
+        }),
       });
       if (!res.ok) throw new Error("Submission failed");
       setSubmitted(true);
@@ -44,8 +50,8 @@ export default function LeadForm({ teamSize = 5, monthlySavings = 0, annualSavin
             <path d="M3 8L6.5 11.5L13 5" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <p className="font-semibold text-white mb-1">You&apos;re on the list</p>
-        <p className="text-sm text-white/50">We&apos;ll be in touch with your personalized savings roadmap.</p>
+          <p className="font-semibold text-white mb-1">Audit confirmation sent</p>
+          <p className="text-sm text-white/50">Your audit summary and shareable report link are on the way.</p>
       </div>
     );
   }
@@ -53,8 +59,8 @@ export default function LeadForm({ teamSize = 5, monthlySavings = 0, annualSavin
   return (
     <div className="rounded-xl border border-white/[0.08] bg-[#111214] p-6">
       <div className="mb-5">
-        <p className="font-semibold text-white mb-1">Get your savings roadmap</p>
-        <p className="text-sm text-white/50">We&apos;ll send a detailed plan to capture these savings.</p>
+        <p className="font-semibold text-white mb-1">Get your audit confirmation</p>
+        <p className="text-sm text-white/50">We&apos;ll email your audit summary and private shareable report link.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
@@ -89,7 +95,7 @@ export default function LeadForm({ teamSize = 5, monthlySavings = 0, annualSavin
           disabled={loading}
           className="w-full py-2.5 rounded-lg bg-[#4F6EF7] hover:bg-[#6B87FF] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
         >
-          {loading ? "Submitting..." : "Send my roadmap →"}
+          {loading ? "Sending..." : "Email my audit report →"}
         </button>
 
         <p className="text-xs text-white/30 text-center">No spam. Unsubscribe anytime.</p>

@@ -1,7 +1,7 @@
 import { supabase } from "./supabase"
-import { Lead } from "./types"
+import { AuditEmail } from "./types"
 
-export async function saveLead(data:Lead) {
+export async function saveLead(data:AuditEmail) {
   if(!supabase) return null
   
   const { data: savedLead, error } = await supabase

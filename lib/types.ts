@@ -70,15 +70,10 @@ export interface FormState {
 
 export interface AuditEmail {
   email: string,
-  monthlySavings: number,
-  annualSavings: number
-}
-
-export interface Lead {
-  email: string,
   companyName: string,
   role: string,
   teamSize: number,
   monthlySavings: number,
-  annualSavings: number
+  annualSavings: number,
+  auditUrl: string
 }
