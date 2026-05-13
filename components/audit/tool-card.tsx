@@ -190,7 +190,7 @@ export default function ToolCard({
           <>
             <div>
               <label className="text-[11px] text-white/40 mb-2 block">
-                Input Tokens / Month (M)
+                Input Tokens (in Million) / Month (M)
               </label>
 
               <input
@@ -210,7 +210,7 @@ export default function ToolCard({
 
             <div>
               <label className="text-[11px] text-white/40 mb-2 block">
-                Output Tokens / Month (M)
+                Output Tokens (in Million) / Month (M)
               </label>
 
               <input
