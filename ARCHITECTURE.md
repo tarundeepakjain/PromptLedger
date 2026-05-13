@@ -1,5 +1,3 @@
-# ARCHITECTURE.md
-
 > **Project:** PromptLedger — AI Spend Audit Tool  
 > **Stack:** Next.js 16 · TypeScript · Tailwind CSS · Supabase · Resend · Gemini API · Vitest  
 > **Status:** MVP
