@@ -33,8 +33,13 @@ function ToolLogo({
   );
 }
 
-function fmtSpend(n: number): string {
-  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`
+function fmtSpend(n?: number): string {
+
+  const value = n ?? 0
+
+  return Number.isInteger(value)
+    ? `$${value}`
+    : `$${value.toFixed(2)}`
 }
 
 export default function RecommendationCard({
