@@ -41,14 +41,14 @@ async function saveAuditResult(auditResult:AuditResult) {
 
   const toolResults = auditResult.toolResults.map((tool:ToolAuditResult) => ({
     audit_id: audit.id,
-    current_tool: tool.currentTool,
-    current_plan: tool.currentPlan,
-    recommended_tool: tool.recommendedTool,
-    recommended_plan: tool.recommendedPlan,
-    current_monthly_spend: tool.currentMonthlySpend,
-    optimized_monthly_spend: tool.optimizedMonthlySpend,
-    monthly_savings: tool.monthlySavings,
-    annual_savings: tool.annualSavings,
+    currentTool: tool.currentTool,
+    currentPlan: tool.currentPlan,
+    recommendedTool: tool.recommendedTool,
+    recommendedPlan: tool.recommendedPlan,
+    currentMonthlySpend: tool.currentMonthlySpend,
+    optimizedMonthlySpend: tool.optimizedMonthlySpend,
+    monthlySavings: tool.monthlySavings,
+    annualSavings: tool.annualSavings,
     reason: tool.reason
   }))
 
