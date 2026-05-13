@@ -3,14 +3,12 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./global.css";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
+import { baseMetadata } from "@/lib/Metadata";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
-export const metadata: Metadata = {
-  title: "PromptLedger — AI Spend Optimizer",
-  description: "Audit your AI tool stack. Cut costs. Keep velocity.",
-};
+export const metadata: Metadata = baseMetadata;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

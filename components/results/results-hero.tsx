@@ -60,7 +60,6 @@ function StatCard({
   label,
   value,
   sublabel,
-  muted,
   highlight,
   big,
 }: {

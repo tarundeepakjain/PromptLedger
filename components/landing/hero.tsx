@@ -1,4 +1,3 @@
-import Link from "next/link";
 import AuditForm from "@/components/audit/audit-form";
 
 export default function Hero() {

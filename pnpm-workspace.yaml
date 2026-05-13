@@ -1,4 +1,5 @@
 allowBuilds:
+  ngrok: true
   sharp: true
   unrs-resolver: true
 ignoredBuiltDependencies:

@@ -34,25 +34,19 @@ export default function AuditForm() {
 
   const [error, setError] = useState("");
 
-  const [form, setForm] = useState<FormState>({
-    teamSize: 2,
-    selectedTools: [],
-    toolEntries: [],
-  });
-
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-
-    if (!saved) return;
-
+  const [form, setForm] = useState<FormState>(() => {
     try {
-      const parsed = JSON.parse(saved);
-
-      setForm(parsed);
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
     } catch {
       console.error("Failed to restore saved form.");
     }
-  }, []);
+    return {
+      teamSize: 2,
+      selectedTools: [],
+      toolEntries: [],
+    };
+  });
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(form));

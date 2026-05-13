@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AuditResult } from "@/lib/types";
 import ResultsHero from "./results-hero";
 import AiSummary from "./ai-summary";
@@ -54,9 +55,9 @@ export default function ResultsPage({ auditId }: { auditId: string }) {
           </div>
           <p className="font-semibold text-white mb-2">Audit not found</p>
           <p className="text-sm text-white/50 mb-6">{error || "This audit may have expired or the link is invalid."}</p>
-          <a href="/" className="inline-flex px-5 py-2.5 rounded-xl bg-[#4F6EF7] hover:bg-[#6B87FF] transition-colors text-sm font-medium">
+          <Link href="/" className="inline-flex px-5 py-2.5 rounded-xl bg-[#4F6EF7] hover:bg-[#6B87FF] transition-colors text-sm font-medium">
             Start a new audit
-          </a>
+          </Link>
         </div>
       </div>
     );
