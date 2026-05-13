@@ -9,7 +9,11 @@ Built as a lead-generation asset for [Credex](https://credex.rocks), the tool is
 ---
 
 ## Screenshots
-
+![Landing Page](./public/screenshots/landing.png)
+![Tool Selector](./public/screenshots/tool-selector.png)
+![Audit Form](./public/screenshots/audit-form.png)
+![Audit Results](./public/screenshots/audit-result.png)
+![Tool Results](./public/screenshots/audit-result-2.png)
 
 Suggested screenshots:
 - Landing page with the audit form
