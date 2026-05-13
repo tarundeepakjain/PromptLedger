@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { ToolUsage } from "@/lib/types";
 import { SUPPORTED_TOOLS } from "./tool-selector";
+import { UseCase } from "@/lib/types";
 
 const PLANS: Record<string, string[]> = {
   Cursor: ["Hobby", "Pro", "Business", "Enterprise"],
@@ -169,7 +170,7 @@ export default function ToolCard({
             onChange={(e) =>
               onChange({
                 ...entry,
-                useCase: e.target.value,
+                useCase: e.target.value as UseCase,
               })
             }
             className="w-full bg-[#111214] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#4F6EF7]/50"

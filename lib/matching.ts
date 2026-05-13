@@ -4,10 +4,11 @@ import {
 } from "./ai-tools"
 import{
     aiPlan,
-    apiPlan
+    apiPlan,
+    UseCase
 } from "./types"
 
-export function canHandleUseCase(currentUseCase:string, candidateUseCases:string[]){
+export function canHandleUseCase(currentUseCase:UseCase, candidateUseCases:UseCase[]){
     return candidateUseCases.includes(currentUseCase)
 }
 
@@ -31,7 +32,7 @@ export function findCurrentPlan(tool:string, plan:string){
     }
 }
 
-export function findCheapestSameVendorPlan(currentPlan: aiPlan, teamSize:number, useCase:string){
+export function findCheapestSameVendorPlan(currentPlan: aiPlan, teamSize:number, useCase:UseCase){
   
     const matchingPlans = aiPlans.filter((candidate)=>{
       if(candidate.tool!==currentPlan.tool){return false}
@@ -52,7 +53,7 @@ export function findCheapestSameVendorPlan(currentPlan: aiPlan, teamSize:number,
     return matchingPlans[0] || null
 }
 
-export function findCheapestAlternativeTool(currentPlan: aiPlan, teamSize:number, useCase:string){
+export function findCheapestAlternativeTool(currentPlan: aiPlan, teamSize:number, useCase:UseCase){
 
     const matchingPlans = aiPlans.filter((candidate)=>{
       if(candidate.tool===currentPlan.tool){return false}
@@ -76,7 +77,7 @@ export function getTotalAPIPrice(plan: apiPlan){
     return (plan.inputPricePerMTok+plan.outputPricePerMTok)
 }
 
-export function findCheapestSameVendorAPI(currentPlan: apiPlan, useCase:string){
+export function findCheapestSameVendorAPI(currentPlan: apiPlan, useCase:UseCase){
 
     const matchingPlans = api_direct.filter((candidate)=>{
       if(candidate.tool!==currentPlan.tool){return false}
@@ -94,7 +95,7 @@ export function findCheapestSameVendorAPI(currentPlan: apiPlan, useCase:string){
     return matchingPlans[0] || null
 }
 
-export function findCheapestAlternativeAPI(currentPlan: apiPlan, useCase:string){
+export function findCheapestAlternativeAPI(currentPlan: apiPlan, useCase:UseCase){
 
     const matchingPlans = api_direct.filter((candidate)=>{
       if(candidate.tool===currentPlan.tool){return false}

@@ -7,7 +7,7 @@ import ToolSelector from "./tool-selector";
 import ToolCard from "./tool-card";
 import LoadingState from "./loading-state";
 
-import { ToolUsage, FormState } from "@/lib/types";
+import { ToolUsage, FormState, UseCase } from "@/lib/types";
 
 const STORAGE_KEY = "credex-audit-form";
 
@@ -74,7 +74,7 @@ export default function AuditForm() {
           inputTokens: isAPI ? 1 : undefined,
           outputTokens: isAPI ? 1 : undefined,
 
-          useCase: "mixed",
+          useCase: "mixed" as UseCase,
         }
       );
     });

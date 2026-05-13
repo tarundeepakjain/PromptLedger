@@ -12,6 +12,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   try {
     const audit = await getAuditResult(id);
+    if (!audit) {
+      return buildAuditMetadata(id, 0, []);
+    }
+
     const toolNames = audit.toolResults.map((t) => t.currentTool);
     return buildAuditMetadata(id, audit.totalAnnualSavings, toolNames);
   } catch {
