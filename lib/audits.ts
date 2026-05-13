@@ -1,7 +1,10 @@
 import { supabase } from "./supabase"
+import { ToolAuditResult } from "./types"
 
 export async function getAuditResult(id:string) {
 
+  if(!supabase) return null 
+  
   const { data: audit, error: auditError } = await supabase
     .from("audits")
     .select("*")
@@ -30,15 +33,17 @@ export async function getAuditResult(id:string) {
 
     totalAnnualSavings:audit.total_annual_savings,
 
-    toolResults: toolResults.map((tool:any) => ({
-      currentTool:tool.current_tool,
-      currentPlan:tool.current_plan,
-      recommendedTool:tool.recommended_tool,
-      recommendedPlan:tool.recommended_plan,
-      currentMonthlySpend:tool.current_monthly_spend,
-      optimizedMonthlySpend:tool.optimized_monthly_spend,
-      monthlySavings:tool.monthly_savings,
-      annualSavings:tool.annual_savings,
+    summary: audit.summary ?? undefined,
+
+    toolResults: toolResults.map((tool: ToolAuditResult) => ({
+      currentTool:tool.currentTool,
+      currentPlan:tool.currentPlan,
+      recommendedTool:tool.recommendedTool,
+      recommendedPlan:tool.recommendedPlan,
+      currentMonthlySpend:tool.currentMonthlySpend,
+      optimizedMonthlySpend:tool.optimizedMonthlySpend,
+      monthlySavings:tool.monthlySavings,
+      annualSavings:tool.annualSavings,
       reason:tool.reason
     }))
   }

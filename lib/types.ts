@@ -33,6 +33,7 @@ export interface ToolAuditResult {
 }
 
 export interface AuditResult {
+  id?: string,
   totalCurrentMonthlySpend: number
   totalOptimizedMonthlySpend: number
   totalMonthlySavings: number
@@ -65,4 +66,19 @@ export interface FormState {
   teamSize: number;
   selectedTools: string[];
   toolEntries: ToolUsage[];
+}
+
+export interface AuditEmail {
+  email: string,
+  monthlySavings: number,
+  annualSavings: number
+}
+
+export interface Lead {
+  email: string,
+  companyName: string,
+  role: string,
+  teamSize: number,
+  monthlySavings: number,
+  annualSavings: number
 }

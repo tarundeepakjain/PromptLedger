@@ -18,6 +18,9 @@ import { supabase } from "./supabase"
 
 async function saveAuditResult(auditResult:AuditResult) {
 
+    if(!supabase){
+        return null
+    }
   const { data: audit, error: auditError } = await supabase
     .from("audits")
     .insert([
@@ -25,7 +28,8 @@ async function saveAuditResult(auditResult:AuditResult) {
         total_current_monthly_spend:auditResult.totalCurrentMonthlySpend,
         total_optimized_monthly_spend:auditResult.totalOptimizedMonthlySpend,
         total_monthly_savings:auditResult.totalMonthlySavings,
-        total_annual_savings:auditResult.totalAnnualSavings
+        total_annual_savings:auditResult.totalAnnualSavings,
+        summary:auditResult.summary ?? null
       }
     ])
     .select()
@@ -64,7 +68,7 @@ function calcAPISpend(plan: apiPlan, inputTokens: number, outputTokens: number):
     return Math.round(cost * 100) / 100
 }
 
-export async function generateAudit(data: AuditInput): Promise<any>{
+export async function generateAudit(data: AuditInput): Promise<AuditResult>{
 
     let totalCurrentMonthlySpend = 0
     let totalOptimizedMonthlySpend = 0

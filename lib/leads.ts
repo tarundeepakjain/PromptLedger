@@ -1,7 +1,9 @@
 import { supabase } from "./supabase"
+import { Lead } from "./types"
 
-export async function saveLead(data:any) {
-    
+export async function saveLead(data:Lead) {
+  if(!supabase) return null
+  
   const { data: savedLead, error } = await supabase
     .from("audit_leads")
     .insert([

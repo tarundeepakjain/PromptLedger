@@ -1,8 +1,8 @@
 import { Resend } from "resend"
-
+import { AuditEmail } from "./types"
 const resend = new Resend(process.env.NEXT_PUBLIC_RESEND_API_KEY)
 
-export async function sendAuditEmail(data:any) {
+export async function sendAuditEmail(data:AuditEmail) {
 
   const res = await resend.emails.send({
     from: "onboarding@resend.dev",
