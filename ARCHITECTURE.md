@@ -1,209 +1,513 @@
-# ARCHITECTURE.md — PromptLedger
+# ARCHITECTURE.md
 
 > **Project:** PromptLedger — AI Spend Audit Tool  
-> **Stack:** Next.js 16 · TypeScript · Tailwind CSS · Supabase · Resend · Gemini API  
+> **Stack:** Next.js 16 · TypeScript · Tailwind CSS · Supabase · Resend · Gemini API · Vitest  
 > **Status:** MVP
 
 ---
 
-## Table of Contents
+# 1. Project Overview
 
-1. [Project Overview](#1-project-overview)
-2. [System Architecture Diagram](#2-system-architecture-diagram)
-3. [Data Flow](#3-data-flow)
-4. [Audit Engine Design](#4-audit-engine-design)
-5. [Why This Stack](#5-why-this-stack)
-6. [Scaling Considerations](#6-scaling-considerations)
-7. [Engineering Tradeoffs](#7-engineering-tradeoffs)
-8. [Security and Abuse Protection](#8-security-and-abuse-protection)
-9. [Future Improvements](#9-future-improvements)
+PromptLedger is a web application that helps startups and small teams analyze their AI tooling costs and identify opportunities to reduce unnecessary spending.
+
+The platform allows users to:
+- input their current AI stack,
+- specify plans, monthly spend, seats, and use cases,
+- generate an instant audit,
+- receive optimization recommendations,
+- estimate monthly and annual savings,
+- and access a shareable public report.
+
+The core idea behind the product is:
+> Most startups adopt AI tools very quickly but rarely optimize their spending structure afterward.
+
+Many companies end up:
+- paying for higher-tier plans unnecessarily,
+- duplicating tool capabilities,
+- overusing enterprise subscriptions,
+- or using expensive APIs for workloads cheaper models can handle.
+
+PromptLedger identifies these inefficiencies using rule-based financial logic instead of purely AI-generated recommendations.
+
+The product is intentionally designed as:
+- a useful standalone startup utility,
+- and a lead-generation engine for Credex.
 
 ---
 
-## 1. Project Overview
-
-PromptLedger is a web tool that takes a startup or engineering team's current AI tooling spend — product subscriptions, API usage, team size, and use case — and produces a defensible audit report that identifies overspending, recommends cheaper alternatives or plan downgrades, and surfaces enterprise/credit opportunities that small teams routinely miss.
-
-The core insight this tool is built around: most teams are on misaligned pricing tiers for their actual operational needs. Many startups pay for collaborative or enterprise-oriented plans despite having small teams, while others use higher-capability models for workloads that could be handled by substantially cheaper alternatives with similar practical utility. The audit engine is designed specifically to identify those mismatches using capability-aware recommendation logic instead of generic price comparison.
-
-This document covers the architecture decisions, engine design, and operational considerations for the MVP. It is not a product spec — it is a record of how the system is actually built and why.
-
----
-
-## 2. System Architecture Diagram
+# 2. System Architecture Diagram
 
 ```mermaid
 graph TD
-    User["👤 User (Browser)"]
+    User["User (Browser)"]
 
-    subgraph Frontend ["Frontend — Next.js 16 App Router"]
-        AuditForm["Audit Input Form\n(Tool · Plan · Spend · Team Size · Use Case)"]
-        ResultsView["Results View\n(Recommendations + Summary)"]
-        EmailCapture["Email Capture\n(Optional Report Delivery)"]
-        ShareablePage["Shareable Report Page\n(/report/[id])"]
+    subgraph Frontend["Frontend — Next.js App Router"]
+        Landing["Landing Page"]
+        AuditForm["Audit Form"]
+        Results["Audit Results"]
+        SharePage["Shareable Report Page"]
+        EmailCapture["Lead Capture Form"]
     end
 
-    subgraph AuditEngine ["Audit Engine — TypeScript (Server-side)"]
-        PlanResolver["Current Plan Resolver"]
-        MatchingLayer["Capability Matching Layer\n(Filters compatible tools using capability, use case, and team size rules\nand capability level)"]
-        RecommendationBuilder["Recommendation Builder\n(Applies hierarchy:\nsame-vendor → alternative → keep)"]
-        CostCalculator["Cost Delta Calculator\n(Monthly + annual savings)"]
+    subgraph Backend["Backend Logic"]
+        AuditEngine["Audit Engine"]
+        Matching["Matching Layer"]
+        Summary["AI Summary Generator"]
     end
 
-    subgraph AILayer ["AI Summary Layer — Gemini API"]
-        SummaryGen["Gemini 1.5 Flash\n(Generates plain-English audit\nsummary from structured output)"]
+    subgraph Database["Supabase"]
+        AuditTable["Audits Table"]
+        LeadsTable["Leads Table"]
     end
 
-    subgraph DataLayer ["Data Layer — Supabase (Postgres + Auth)"]
-        AuditsTable["audits\n(id · email · input · recommendations · summary · created_at)"]
-        PlansRegistry["plans_registry\n(Static reference — aiPlans + api_direct)"]
-        RateLimitLog["rate_limit_log\n(IP · timestamp · request count)"]
+    subgraph External["External Services"]
+        Gemini["Gemini API"]
+        Resend["Resend Email API"]
     end
 
-    subgraph EmailLayer ["Email Service — Resend"]
-        ReportEmail["Transactional Email\n(Audit summary + shareable link)"]
-    end
-
-    User -->|Fills form| AuditForm
-    AuditForm -->|POST /api/audit| Normalizer
-    Normalizer --> MatchingLayer
-    MatchingLayer --> RecommendationBuilder
-    RecommendationBuilder --> CostCalculator
-    CostCalculator -->|Structured JSON| SummaryGen
-    SummaryGen -->|Plain-English summary| ResultsView
-    CostCalculator -->|Save audit record| AuditsTable
-    ResultsView --> EmailCapture
-    EmailCapture -->|Trigger email| ReportEmail
-    ReportEmail -->|Shareable link| User
-    ShareablePage -->|Fetch by ID| AuditsTable
+    User --> Landing
+    Landing --> AuditForm
+    AuditForm --> AuditEngine
+    AuditEngine --> Matching
+    Matching --> Results
+    Results --> Summary
+    Summary --> Gemini
+    Results --> EmailCapture
+    EmailCapture --> Resend
+    AuditEngine --> AuditTable
+    EmailCapture --> LeadsTable
+    SharePage --> AuditTable
 ```
-
-The architecture deliberately keeps the audit engine server-side. The recommendation logic is not exposed to the client — only the final result is returned. This prevents scraping of the tool registry and keeps the API surface small.
 
 ---
 
-## 3. Data Flow
+# 3. Data Flow
 
-This is what happens from form submission to delivered report.
+## Step 1 — User Input
 
-**Step 1 — Form Submission**  
-The user fills in one or more AI tools they use: tool name, plan name, monthly spend in USD, team size (headcount), and primary use case selected from a fixed enum (e.g., `coding`, `writing`, `data`, `research`, `mixed`).
+The user fills the audit form with:
+- AI tool name
+- selected plan
+- monthly spend
+- number of seats
+- primary use case
+- team size
 
-The form submits a `POST` request to `/api/audit` with a typed `AuditRequest` payload.
-
-**Step 2 — Current Plan Resolution**  
-The audit engine resolves the submitted tool and plan against the internal registries (`aiPlans` and `api_direct`). If a matching entry exists, the corresponding structured plan object is used for capability and pricing evaluation.
-
-The current implementation assumes valid tool and plan input from the frontend form and focuses primarily on recommendation logic rather than complex normalization or fuzzy matching. Unknown tools are currently skipped by the audit engine instead of being force-matched to an alternative.
-
-**Step 3 — Capability Matching**  
-For each recognized tool, the matching layer retrieves all plans across same-vendor and alternative vendors that satisfy the submitted use case. Candidates are filtered by:
-
-- `useCases` — the plan must cover the submitted use case
-- `capabilityLevel` — the plan must be ≥ the minimum level required to handle the workload (see §4)
-- `teamSizeCompatibility` — the plan must be compatible with the submitted team size
-- `registry separation` — subscription-based products are stored in `aiPlans`, while API-based products are stored in `api_direct`. The audit engine evaluates these registries independently instead of mixing both operational categories together. against API products
-
-This produces a scored candidate list for each submitted tool.
-
-**Step 4 — Recommendation Building**  
-The engine computes savings and generates a recommendation reason explaining the optimization path..
-The full candidate list is not returned to the client. Only the top recommendation per tool is surfaced.
-
-**Step 5 — AI Summary Generation**  
-The structured recommendation output (tool names, current spend, recommended spend, savings, recommendation types) is passed as a prompt payload to the Gemini 1.5 Flash API. The prompt instructs the model to produce a 150–250 word plain-English audit summary written for a non-technical founder or engineering lead. The model is not asked to invent recommendations — it is summarizing the engine's output.
-
-If summary generation fails, the structured audit result can still be returned independently of the AI-generated summary.
-
-**Step 6 — Persistence**  
-The complete audit — input, recommendations, cost deltas, and AI summary — is written to the `audits` table in Supabase. A UUID is generated for the record. This UUID is used to construct the shareable report URL: `/report/[id]`.
-
-**Step 7 — Email Capture and Delivery**  
-Before the full results are revealed in the UI, the user is prompted to enter their email address. On submission, Resend fires a transactional email containing the audit summary and a link to the shareable report page. The shareable page is publicly accessible by UUID — no authentication required to view a shared report.
+Form state is persisted locally so refreshes do not erase progress.
 
 ---
 
-## 4. Audit Engine Design
+## Step 2 — Audit Engine Processing
 
-### 4.1 Plan Registry Structure
+The frontend sends structured data to the audit engine.
 
-All known AI products are stored in two registries:
+The engine:
+- resolves the current plan,
+- validates use case compatibility,
+- evaluates capability levels,
+- compares pricing,
+- and calculates optimization opportunities.
 
-**`aiPlans`** — subscription-based products (e.g., ChatGPT Plus, Claude Pro, GitHub Copilot Business). Each entry carries:
+The logic is entirely deterministic and rule-based.
 
-```typescript
-type UseCase =
-  | "coding"
-  | "writing"
-  | "research"
-  | "data"
-  | "mixed"
-
-type aiPlans = {
-  tool: string
-  plan: string
-  useCases: UseCase[]
-  capabilityLevel: number
-  minTeamSize: number
-  maxTeamSize: number
-  monthlyPrice: number | null
-}
-```
-
-**`api_direct`** — API-accessed products billed by token/request (e.g., OpenAI API, Anthropic API, Gemini API). Each entry carries:
-
-```typescript
-type api_direct = {
-  tool: string
-  plan: string
-  useCases: UseCase[]
-  capabilityLevel: number
-  inputPricePerMTok: number 
-  outputPricePerMTok: number 
-  enterpriseReady: boolean
-}
-```
-
-Keeping these two registries separate is a deliberate choice. A team paying $20/month for ChatGPT Plus is buying a product experience with rate limiting, plugin access, and DALL·E integration. A team using the OpenAI API is buying compute. These are not interchangeable in a recommendation without user context the form does not capture, so the engine does not attempt cross-type comparisons.
-
-### 4.2 Capability Level Hierarchy
-
-Each plan is assigned a capability level from 1 to 4:
-
-| Level | Description | Example |
-|-------|-------------|---------|
-| 1 | Basic — simple Q&A, short-form content, autocomplete | GPT-3.5, Gemini Flash |
-| 2 | Intermediate — multi-step reasoning, moderate context | Claude Haiku, GPT-4o Mini |
-| 3 | Advanced — complex reasoning, long context, code | GPT-4o, Claude Sonnet |
-| 4 | Frontier — research-grade, deep analysis, multimodal | Claude Opus, GPT-4 with tools |
-
-The hierarchy is transitive: a Level 4 plan can handle Level 3, 2, and 1 workloads. A Level 3 plan handles Level 2 and 1. A team submitting a use case that requires Level 2 capability will only be recommended Level 2+ plans — the engine will never recommend a downgrade that drops below the minimum capability required for their stated workload.
-
-This is the most important constraint in the engine. Without it, the cheapest option would always win, and the recommendations would be operationally irresponsible.
-
-### 4.3 Recommendation Priority Hierarchy
-
-For each submitted tool, the engine evaluates candidates in this order:
-
-**Priority 1 — Same-Vendor Cheaper Plan**  
-Check if the same vendor offers a lower-tier plan that still meets the capability and use case requirements. This is surfaced first because it carries zero migration risk. The team is already authenticated, integrated, and familiar with the vendor's API or UI. A plan downgrade requires a single billing change.
-
-Example: A team of 3 paying for ChatGPT Team ($30/user/month) for basic content drafting, when ChatGPT Plus ($20/month) covers their capability requirement individually.
-
-**Priority 2 — Alternative Vendor**  
-If no same-vendor downgrade exists (the team is already on the cheapest qualifying plan), look for a cheaper plan from a different vendor that meets the same capability and use case criteria. This recommendation is flagged as `alternative` and the output notes that migration is required.
-
-Example: A team using Claude Pro for code generation, when GitHub Copilot Business covers the same use case at a lower blended cost per developer.
-
-**Priority 3 — Keep Current**  
-If the current plan is already the cheapest qualifying option across all vendors, the engine returns a `keep` recommendation. The audit still notes the current monthly spend and confirms the team is not overpaying for this tool.
-
-### 4.4 Why Same-Vendor Comes First
-
-This ordering is an explicit product decision, not a technical constraint.
-
-Cross-vendor alternatives are objectively harder to act on. They require re-integration, re-evaluation of data handling agreements (important for teams processing customer data through AI APIs), potential retraining for non-technical users, and a budget approval cycle. For a startup, the switching cost is real.
-
-A same-vendor downgrade, by contrast, is actionable in minutes. Prioritizing it means the audit produces recommendations that teams will actually implement, which makes PromptLedger useful rather than theoretically correct.
+AI is not used for financial calculations because:
+- predictable logic is more reliable,
+- recommendations need to be financially defensible,
+- and pricing comparisons should remain transparent.
 
 ---
+
+## Step 3 — Recommendation Matching
+
+The matching layer searches:
+- same-vendor cheaper plans,
+- alternative vendor tools,
+- and compatible lower-cost API models.
+
+Recommendations are filtered using:
+- capability level,
+- use case compatibility,
+- team size constraints,
+- and pricing thresholds.
+
+The recommendation hierarchy is:
+
+1. Same-vendor downgrade
+2. Alternative vendor recommendation
+3. Keep current plan
+
+This prioritization reduces migration friction for users.
+
+---
+
+## Step 4 — Savings Calculation
+
+The audit engine calculates:
+- optimized monthly spend
+- monthly savings
+- annual savings
+
+Results are aggregated into:
+- per-tool breakdowns
+- total savings summaries
+- and optimization explanations.
+
+---
+
+## Step 5 — AI Summary Generation
+
+After the structured audit is generated, the recommendation data is passed to Gemini API.
+
+Gemini generates:
+- a founder-friendly summary,
+- simplified explanations,
+- and actionable observations.
+
+If the API fails:
+- the system falls back to static summary templates.
+
+This prevents audit failure because of AI downtime.
+
+---
+
+## Step 6 — Persistence and Sharing
+
+Audit results are stored in Supabase with unique IDs.
+
+Each audit receives:
+- a public shareable URL,
+- Open Graph metadata,
+- and Twitter preview support.
+
+Sensitive fields like:
+- company name
+- and email
+
+are excluded from public reports.
+
+---
+
+## Step 7 — Lead Capture
+
+Users can optionally submit:
+- email
+- company name
+- role
+- team size
+
+The backend stores leads in Supabase and triggers transactional emails through Resend.
+
+High-savings users are surfaced as stronger Credex leads.
+
+---
+
+# 4. Audit Engine Design
+
+The audit engine is the core of PromptLedger.
+
+It uses structured registries for:
+- subscription plans
+- and API pricing models.
+
+The project separates:
+- SaaS subscriptions
+- and API-based pricing
+
+because both behave differently economically.
+
+---
+
+## Subscription Plans
+
+Stored inside:
+- `aiPlans`
+
+Each plan includes:
+- tool
+- plan
+- capability level
+- use cases
+- team size constraints
+- monthly pricing
+
+---
+
+## API Plans
+
+Stored inside:
+- `api_direct`
+
+Each API model includes:
+- token pricing
+- use cases
+- capability levels
+- enterprise readiness
+
+---
+
+## Capability Level System
+
+Each plan receives a capability score from:
+- 1 → basic
+- 4 → frontier-grade
+
+This prevents:
+- unrealistic downgrades,
+- or recommending weak models for complex workloads.
+
+Example:
+- a Level 4 coding workflow should never downgrade into a Level 1 autocomplete model only because it is cheaper.
+
+This was one of the most important architectural constraints in the system.
+
+---
+
+# 5. Why I Chose This Stack
+
+## Next.js 16
+
+I chose Next.js because:
+- App Router provides clean routing,
+- deployment on Vercel is simple,
+- server/client separation is straightforward,
+- and SSR support helps for shareable pages and SEO.
+
+The framework also made Open Graph integration easier.
+
+---
+
+## TypeScript
+
+TypeScript was used to:
+- improve reliability,
+- catch runtime issues early,
+- and enforce structured audit logic.
+
+During development, TypeScript helped detect:
+- undefined values,
+- invalid pricing access,
+- and inconsistent recommendation structures.
+
+---
+
+## Tailwind CSS
+
+Tailwind allowed:
+- fast UI iteration,
+- responsive layouts,
+- and consistent styling
+
+without building a custom CSS system.
+
+---
+
+## Supabase
+
+Supabase was selected because:
+- setup is fast,
+- PostgreSQL support is reliable,
+- and integration with Next.js is simple.
+
+It was sufficient for:
+- audit storage,
+- lead capture,
+- and public report retrieval.
+
+---
+
+## Gemini API
+
+Gemini was used only for:
+- summary generation.
+
+I intentionally avoided using AI for audit logic because:
+- deterministic financial rules are easier to validate,
+- cheaper to compute,
+- and safer for recommendation systems.
+
+---
+
+## Resend
+
+Resend simplified:
+- transactional email delivery,
+- audit confirmation emails,
+- and shareable report workflows.
+
+---
+
+## Vitest
+
+Vitest was used for:
+- audit engine testing,
+- savings calculation validation,
+- and recommendation logic testing.
+
+Testing business logic separately from UI reduced debugging complexity.
+
+---
+
+# 6. Scaling Considerations
+
+If PromptLedger needed to support:
+- 10,000+ audits/day
+
+I would improve the architecture in several areas.
+
+---
+
+## Queue-Based AI Processing
+
+Currently:
+- AI summaries generate synchronously.
+
+At scale:
+- summaries should move into background jobs.
+
+Possible solutions:
+- BullMQ
+- Inngest
+- Trigger.dev
+
+---
+
+## Pricing Registry Database
+
+Currently:
+- pricing data is hardcoded.
+
+At scale:
+- pricing should move into a managed database table,
+- with automated update pipelines.
+
+---
+
+## Redis Rate Limiting
+
+Basic protection currently exists.
+
+At scale:
+- Redis-backed distributed rate limiting would be required.
+
+---
+
+## Analytics Layer
+
+I would add:
+- PostHog
+- or Mixpanel
+
+to track:
+- audit completion rates,
+- conversion funnels,
+- recommendation acceptance,
+- and lead quality.
+
+---
+
+## Caching
+
+Frequently shared reports should use:
+- edge caching,
+- ISR,
+- or CDN caching
+
+to reduce database load.
+
+---
+
+# 7. Engineering Tradeoffs
+
+## Rule-Based Recommendations vs AI Recommendations
+
+I intentionally chose:
+- deterministic recommendation logic
+
+instead of:
+- fully AI-generated recommendations.
+
+Reason:
+- pricing recommendations need consistency and explainability.
+
+---
+
+## No Authentication
+
+The MVP does not require login.
+
+This improves:
+- onboarding speed,
+- shareability,
+- and conversion rate.
+
+Tradeoff:
+- limited personalization.
+
+---
+
+## Static Pricing Registry
+
+Pricing data is currently manually maintained.
+
+This simplified:
+- development speed
+- and debugging.
+
+Tradeoff:
+- pricing updates require manual maintenance.
+
+---
+
+## Public Shareable Reports
+
+Reports are intentionally public by UUID.
+
+This improves:
+- virality,
+- screenshots,
+- and sharing.
+
+Tradeoff:
+- reports must avoid sensitive company data.
+
+---
+
+# 8. Security and Abuse Protection
+
+The application includes:
+- environment variable protection,
+- server-side recommendation logic,
+- and basic abuse protection.
+
+Important measures:
+- no secrets stored in repo,
+- public reports stripped of personal data,
+- frontend cannot access recommendation internals directly.
+
+Basic abuse protection can be expanded later using:
+- hCaptcha
+- Redis rate limiting
+- IP throttling
+
+---
+
+# 9. Future Improvements
+
+If I continued this project beyond the assignment, I would build:
+
+- benchmark mode
+- team-wide AI analytics
+- PDF report export
+- automated pricing sync
+- AI stack monitoring over time
+- organization dashboards
+- API spend estimators
+- onboarding simplification for non-technical founders
+
+I would also improve:
+- mobile UX,
+- report visualizations,
+- and onboarding clarity.
+
+Long-term, PromptLedger could evolve into:
+> an operating system for startup AI spending decisions.
