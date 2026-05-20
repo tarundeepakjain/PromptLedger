@@ -77,3 +77,8 @@ export interface AuditEmail {
   annualSavings: number,
   auditUrl: string
 }
+
+export interface AuditRequestBody {
+  email: string
+  auditInput: AuditInput
+}

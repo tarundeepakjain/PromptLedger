@@ -14,13 +14,54 @@ import {
     findCheapestAlternativeAPI,
 } from "./matching"
 
+import { aiPlans,api_direct } from "./ai-tools"
 import { supabase } from "./supabase"
 
-async function saveAuditResult(auditResult:AuditResult) {
+
+async function getOrCreatePricingVersion() {
+
+    if(!supabase) return null 
+
+    const snapshot = {
+        aiPlans,
+        api_direct
+    }
+
+    const { data:existingVersion, error:findError } = await supabase
+        .from("pricing_version")
+        .select("id")
+        .eq("snapshot", JSON.stringify(snapshot))
+        .maybeSingle()
+
+    if(findError){
+        throw new Error(findError.message)
+    }
+
+    if(existingVersion){
+        return existingVersion.id
+    }
+
+    const { data:newVersion, error:createError } = await supabase
+        .from("pricing_version")
+        .insert({
+            snapshot:snapshot
+        })
+        .select("id")
+        .single()
+
+    if(createError){
+        throw new Error(createError.message)
+    }
+
+    return newVersion.id
+}
+
+async function saveAuditResult(auditResult:AuditResult,email:string,auditInput:AuditInput) {
 
     if(!supabase){
         return null
     }
+
   const { data: audit, error: auditError } = await supabase
     .from("audits")
     .insert([
@@ -60,6 +101,21 @@ async function saveAuditResult(auditResult:AuditResult) {
     throw toolResultsError
   }
 
+    const pricing_id = await getOrCreatePricingVersion()
+    const { data:newAuditEntry, error:createError } = await supabase
+    .from("stored_audits")
+    .insert({
+        id: audit.id,
+        input: auditInput,
+        output: auditResult,
+        pricing: pricing_id,
+        email: email,
+    })
+    .select()
+
+    if(createError){
+        throw new Error(createError.message)
+    }
   return audit
 }
 
@@ -68,11 +124,10 @@ function calcAPISpend(plan: apiPlan, inputTokens: number, outputTokens: number):
     return Math.round(cost * 100) / 100
 }
 
-export async function generateAudit(data: AuditInput): Promise<AuditResult>{
+export async function generateAudit(data: AuditInput,email: string): Promise<AuditResult>{
 
     let totalCurrentMonthlySpend = 0
     let totalOptimizedMonthlySpend = 0
-
     const toolResults: ToolAuditResult[] = []
 
     for(const tool of data.tools){
@@ -245,7 +300,7 @@ export async function generateAudit(data: AuditInput): Promise<AuditResult>{
 
     let audit = null
     try{
-        audit = await saveAuditResult(result)
+        audit = await saveAuditResult(result,email,data)
     }catch(error){
         console.error("Audit not saved publicly in supabase.",error)
     }
