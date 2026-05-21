@@ -453,7 +453,7 @@ export async function sendReauditEmail(data: AffectedAudit[]){
                     </ul>
 
                     <a
-                        href="${process.env.NEXT_PUBLIC_BASE_URL}/rerun/${audit.id}"
+                        href="${process.env.NEXT_PUBLIC_BASE_URL}/audit/diff-view/${audit.id}"
                         style="
                             display:inline-block;
                             margin-top:12px;

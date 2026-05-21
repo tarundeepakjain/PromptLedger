@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { AuditResult } from "@/lib/types";
 import DiffHero from "@/components/diff/DiffHero";
@@ -13,13 +14,9 @@ interface DiffData {
   newAudit: AuditResult;
 }
 
-export default function DiffViewPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const { id } = params;
-
+export default function DiffViewPage() {
+  const params = useParams()
+  const id = params.id as string
   const [data, setData] = useState<DiffData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

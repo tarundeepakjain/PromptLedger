@@ -80,7 +80,8 @@ export interface AuditEmail {
 
 export interface AuditRequestBody {
   email: string
-  auditInput: AuditInput
+  teamSize: number
+  tools: ToolUsage[]
 }
 
 export interface AffectedAudit {
