@@ -34,6 +34,8 @@ export default function AuditForm() {
 
   const [error, setError] = useState("");
 
+  const [email, setEmail] = useState("");
+
   const [form, setForm] = useState<FormState>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -133,6 +135,7 @@ export default function AuditForm() {
 
         body: JSON.stringify({
           teamSize: form.teamSize,
+          email,
           tools: form.toolEntries,
         }),
       });
@@ -220,6 +223,20 @@ export default function AuditForm() {
             }
             className="w-full bg-[#0A0A0B] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#4F6EF7]/50"
             placeholder="Enter your team size"
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">
+            Email
+          </label>
+
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full bg-[#0A0A0B] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#4F6EF7]/50"
+            placeholder="Enter your email"
           />
         </div>
 
