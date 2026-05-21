@@ -17,25 +17,38 @@ import {
 } from "./matching"
 
 export async function getLatestPricingVersion(){
-
     if(!supabase) return null
     const snapshot = {
         aiPlans,
         api_direct
     }
-   const { data, error } = await supabase
+    const { data: existingVersion,error } = await supabase
       .from("pricing_version")
       .select("*")
       .eq("snapshot",JSON.stringify(snapshot))
       .maybeSingle()
 
-   if(error){
+    if(error){
       throw new Error(error.message)
-   }
+    }
 
-   return data
+    if(existingVersion){
+      return existingVersion
+    }
+
+    const { data: newVersion,error: insertError } = await supabase
+      .from("pricing_version")
+      .insert({
+        snapshot
+      })
+      .select()
+      .single()
+
+    if(insertError){
+      throw new Error(insertError.message)
+    }
+    return newVersion
 }
-
 export function hasAuditChanged(oldAudit: AuditResult,newAudit: AuditResult){
    if(oldAudit.totalMonthlySavings !== newAudit.totalMonthlySavings){
       return true

@@ -86,7 +86,7 @@ export const aiPlans:aiPlan[] = [
     //Claude
   {
     tool: "Claude",
-    plan: "Free",
+    plan: "Free", //
     useCases: ["writing", "research"],
     capabilityLevel: 1,
     minTeamSize: 1,
