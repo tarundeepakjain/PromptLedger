@@ -34,7 +34,7 @@ export const aiPlans:aiPlan[] = [
     capabilityLevel: 4,
     minTeamSize: 3,
     maxTeamSize: 25,
-    monthlyPrice: 10,
+    monthlyPrice: 5,
     
   },
 
