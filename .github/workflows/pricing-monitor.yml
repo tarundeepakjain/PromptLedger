@@ -12,4 +12,4 @@ jobs:
     steps:
       - name: Trigger pricing detection
         run: |
-          curl -X POST ${{ secrets.DETECT_CHANGES_URL }}
+          curl -v ${{ secrets.DETECT_CHANGES_URL }}

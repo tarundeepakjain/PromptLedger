@@ -343,6 +343,7 @@ export async function sendReauditEmail(data: AffectedAudit[]){
 
     for(const audit of data){
         const existing = groupedAudits.get(audit.email)
+
         if(existing){
             existing.push(audit)
         }else{
@@ -354,62 +355,80 @@ export async function sendReauditEmail(data: AffectedAudit[]){
     }
 
     for(const [email,audits] of groupedAudits){
+
         const auditsHTML = audits.map((audit)=>{
+
             const changedTools = audit.newAudit.toolResults.flatMap((newTool)=>{
-                        const oldTool = audit.oldAudit.toolResults.find((tool)=>tool.currentTool === newTool.currentTool)
-                        if(!oldTool){
-                            return []
-                        }
 
-                        const changed = (oldTool.recommendedTool !== newTool.recommendedTool) ||
-                            (oldTool.recommendedPlan !== newTool.recommendedPlan) ||
-                            (oldTool.optimizedMonthlySpend !== newTool.optimizedMonthlySpend)
+                const oldTool = audit.oldAudit.toolResults.find((tool)=>{
+                    return tool.currentTool === newTool.currentTool
+                })
 
-                        if(!changed){
-                            return []
-                        }
+                if(!oldTool){
+                    return []
+                }
 
-                        return [{
-                            oldTool,
-                            newTool
-                        }]
-                    }
-                )
+                const changed =
+                    (oldTool.recommendedTool !== newTool.recommendedTool) ||
+                    (oldTool.recommendedPlan !== newTool.recommendedPlan) ||
+                    (oldTool.optimizedMonthlySpend !== newTool.optimizedMonthlySpend)
+
+                if(!changed){
+                    return []
+                }
+
+                return [{
+                    oldTool,
+                    newTool
+                }]
+            })
+
+            const hasSavingsChanged =
+                audit.oldAudit.totalMonthlySavings !==
+                audit.newAudit.totalMonthlySavings
+
+            //Skip audits where nothing meaningful changed
+            if(
+                changedTools.length === 0 &&
+                !hasSavingsChanged
+            ){
+                return ""
+            }
 
             const changedToolsHTML = changedTools.map(({ oldTool,newTool })=>{
-                        return `
-                            <li style="margin-bottom:16px;">
 
-                                <strong>
-                                    ${newTool.currentTool}
-                                </strong>
+                return `
+                    <li style="margin-bottom:16px;">
 
-                                <br/>
+                        <strong>
+                            ${newTool.currentTool}
+                        </strong>
 
-                                Previous Recommendation:
-                                ${oldTool.recommendedTool}
-                                (${oldTool.recommendedPlan})
+                        <br/>
 
-                                <br/>
+                        Previous Recommendation:
+                        ${oldTool.recommendedTool}
+                        (${oldTool.recommendedPlan})
 
-                                New Recommendation:
-                                ${newTool.recommendedTool}
-                                (${newTool.recommendedPlan})
+                        <br/>
 
-                                <br/>
+                        New Recommendation:
+                        ${newTool.recommendedTool}
+                        (${newTool.recommendedPlan})
 
-                                Previous Optimized Spend:
-                                $${oldTool.optimizedMonthlySpend}
+                        <br/>
 
-                                <br/>
+                        Previous Optimized Spend:
+                        $${oldTool.optimizedMonthlySpend}
 
-                                New Optimized Spend:
-                                $${newTool.optimizedMonthlySpend}
+                        <br/>
 
-                            </li>
-                        `
-                    }
-                ).join("")
+                        New Optimized Spend:
+                        $${newTool.optimizedMonthlySpend}
+
+                    </li>
+                `
+            }).join("")
 
             return `
                 <div
@@ -470,6 +489,11 @@ export async function sendReauditEmail(data: AffectedAudit[]){
                 </div>
             `
         }).join("")
+
+        //Skip sending email if no audits actually changed
+        if(!auditsHTML.trim()){
+            continue
+        }
 
         await resend.emails.send({
 
