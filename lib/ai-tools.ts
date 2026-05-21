@@ -34,7 +34,7 @@ export const aiPlans:aiPlan[] = [
     capabilityLevel: 4,
     minTeamSize: 3,
     maxTeamSize: 25,
-    monthlyPrice: 5,
+    monthlyPrice: 40,
     
   },
 
@@ -86,7 +86,7 @@ export const aiPlans:aiPlan[] = [
     //Claude
   {
     tool: "Claude",
-    plan: "Free", //
+    plan: "Free", 
     useCases: ["writing", "research"],
     capabilityLevel: 1,
     minTeamSize: 1,
