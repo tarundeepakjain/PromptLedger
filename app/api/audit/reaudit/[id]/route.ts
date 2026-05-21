@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { reRunEstimate } from "@/lib/re-run"
+import { reRunAudit } from "@/lib/re-run"
 
 export async function GET(req:NextRequest,{ params }:{ params:Promise<{ id:string }>}){
   try{
@@ -15,7 +15,7 @@ export async function GET(req:NextRequest,{ params }:{ params:Promise<{ id:strin
         }
       )
     }
-    const result = await reRunEstimate(id)
+    const result = await reRunAudit(id)
     if(!result){
       return NextResponse.json(
         {
