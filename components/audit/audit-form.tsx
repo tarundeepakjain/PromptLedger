@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import ToolSelector from "./tool-selector";
@@ -36,29 +36,27 @@ export default function AuditForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
-  const [hydrated, setHydrated] = useState(false);
+  const isMounted = useRef(false);
 
-  // Always start with default — never read localStorage during render
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
-
-  // After mount: restore from localStorage
-  useEffect(() => {
+  // Read localStorage once at mount via lazy initializer — no setState in effect
+  const [form, setForm] = useState<FormState>(() => {
+    if (typeof window === "undefined") return DEFAULT_FORM;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        setForm(JSON.parse(saved));
-      }
+      return saved ? JSON.parse(saved) : DEFAULT_FORM;
     } catch {
-      console.error("Failed to restore saved form.");
+      return DEFAULT_FORM;
     }
-    setHydrated(true);
-  }, []);
+  });
 
-  // Persist to localStorage on every change (only after hydration)
+  // Persist to localStorage on every change (skip the initial mount write)
   useEffect(() => {
-    if (!hydrated) return;
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
-  }, [form, hydrated]);
+  }, [form]);
 
   const handleToolsChange = (tools: string[]) => {
     const updatedEntries = tools.map((tool) => {
@@ -203,9 +201,8 @@ export default function AuditForm() {
         {step === "select" && (
           <>
             <div className="mb-6">
-              <label className="text-xs text-white/50 uppercase tracking-wider mb-3 block">
-                {/* KEY FIX: no dynamic content inside label during SSR */}
-                Select AI Tools{hydrated ? ` (${form.selectedTools.length} selected)` : ""}
+              <label className="text-xs text-white/50 uppercase tracking-wider mb-3 block" suppressHydrationWarning>
+                Select AI Tools ({form.selectedTools.length} selected)
               </label>
               <ToolSelector
                 selected={form.selectedTools}

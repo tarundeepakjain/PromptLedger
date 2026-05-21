@@ -102,7 +102,7 @@ async function saveAuditResult(auditResult:AuditResult,email:string,auditInput:A
   }
 
     const pricing_id = await getOrCreatePricingVersion()
-    const { data:newAuditEntry, error:createError } = await supabase
+    const { error:createError } = await supabase
     .from("stored_audits")
     .insert({
         id: audit.id,

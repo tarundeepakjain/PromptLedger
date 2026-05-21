@@ -117,7 +117,7 @@ export async function reRunAudit(id:string){
     throw new Error("Failed to update audits table")
   }
 
-  const { data:updatedAudit ,error: storedUpdateError } = await supabase
+  const { error: storedUpdateError } = await supabase
     .from("stored_audits")
     .update({
       output:newAudit,

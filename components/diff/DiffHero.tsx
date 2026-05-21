@@ -73,7 +73,7 @@ export default function DiffHero({ oldAudit, newAudit }: Props) {
 }
 
 function CompareStatCard({
-  label, value, sublabel, muted, highlight, positive, negative, big,
+  label, value, sublabel, highlight, positive, negative, big,
 }: {
   label: string; value: string; sublabel?: string;
   muted?: boolean; highlight?: boolean; positive?: boolean; negative?: boolean; big?: boolean;

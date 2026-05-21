@@ -175,7 +175,7 @@ export async function estimateAudit(data: AuditInput): Promise<AuditResult>{
     }else if (totalMonthlySavings < 100) {
         fallbackSummary = "Your current AI stack already appears reasonably cost-efficient for the reported workload."
     }
-    let summary = fallbackSummary
+    const summary = fallbackSummary
 
     const result: AuditResult = {
         totalCurrentMonthlySpend,
