@@ -4,7 +4,8 @@ import {
    AuditResult,
    ToolAuditResult,
    aiPlan,
-   apiPlan
+   apiPlan,
+   AffectedAudit
 } from "@/lib/types"
 import { api_direct,aiPlans } from "./ai-tools"
 import {
@@ -188,7 +189,7 @@ export async function detectPricingChanges(){
       throw new Error(error.message)
    }
 
-   const affectedAudits = []
+   const affectedAudits: AffectedAudit[] = []
 
    for(const audit of storedAudits){
       if(audit.pricing === latestPricingVersion.id){
@@ -198,12 +199,12 @@ export async function detectPricingChanges(){
       const oldAudit: AuditResult = audit.output
       const auditInput: AuditInput = audit.input
 
-      const newAudit = await estimateAudit(auditInput)
+      const newAudit: AuditResult = await estimateAudit(auditInput)
       const changed = hasAuditChanged(oldAudit,newAudit)
 
       if(changed){
          affectedAudits.push({
-            auditId:audit.id,
+            id:audit.id,
             email:audit.email,
 
             oldAudit,

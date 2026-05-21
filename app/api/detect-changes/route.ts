@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server"
 import { detectPricingChanges } from "@/lib/pricing-monitor"
+import { sendReauditEmail } from "@/lib/email"
+import { AffectedAudit } from "@/lib/types"
 
 export async function GET(){
     try{
         const affectedAudits = await detectPricingChanges()
-        const audits = affectedAudits ?? []
+        const audits: AffectedAudit[] = affectedAudits ?? []
+        await sendReauditEmail(audits)
         return NextResponse.json(
             {
                 success:true,

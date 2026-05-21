@@ -82,3 +82,12 @@ export interface AuditRequestBody {
   email: string
   auditInput: AuditInput
 }
+
+export interface AffectedAudit {
+  id: string
+  email: string
+  oldAudit: AuditResult
+  newAudit: AuditResult
+  oldPricingVersion: string
+  newPricingVersion: string
+}
