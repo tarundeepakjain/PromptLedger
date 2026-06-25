@@ -1,0 +1,15 @@
+name: Pricing Change Detection
+
+on:
+  push:
+    paths:
+      - "lib/ai-tools.ts"
+
+jobs:
+  detect-pricing-changes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger pricing detection
+        run: |
+          curl -v ${{ secrets.DETECT_CHANGES_URL }}

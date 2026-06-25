@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateAudit } from "@/lib/audit-engine"
-import { AuditInput } from "@/lib/types"
+import { AuditInput, AuditRequestBody } from "@/lib/types"
 
 export async function POST(req: NextRequest){
     try{
-        const body: AuditInput = await req.json()
-        const auditResult = await generateAudit(body)
+        const body : AuditRequestBody = await req.json()
+        const auditInput:AuditInput = {
+            teamSize:body.teamSize,
+            tools:body.tools
+        }
+        const auditResult = await generateAudit(auditInput,body.email)
         return NextResponse.json(
             {
                 success: true,

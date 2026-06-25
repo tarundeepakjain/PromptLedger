@@ -77,3 +77,18 @@ export interface AuditEmail {
   annualSavings: number,
   auditUrl: string
 }
+
+export interface AuditRequestBody {
+  email: string
+  teamSize: number
+  tools: ToolUsage[]
+}
+
+export interface AffectedAudit {
+  id: string
+  email: string
+  oldAudit: AuditResult
+  newAudit: AuditResult
+  oldPricingVersion: string
+  newPricingVersion: string
+}

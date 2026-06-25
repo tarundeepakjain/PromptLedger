@@ -1,5 +1,8 @@
 import { Resend } from "resend"
-import { AuditEmail } from "./types"
+import { 
+AuditEmail,
+AffectedAudit
+ } from "./types"
 
 const resend = new Resend(process.env.NEXT_PUBLIC_RESEND_API_KEY)
 
@@ -332,4 +335,197 @@ export async function sendAuditEmail(data: AuditEmail) {
   })
 
   console.log(res)
+}
+
+export async function sendReauditEmail(data: AffectedAudit[]){
+
+    const groupedAudits = new Map<string,AffectedAudit[]>()
+
+    for(const audit of data){
+        const existing = groupedAudits.get(audit.email)
+
+        if(existing){
+            existing.push(audit)
+        }else{
+            groupedAudits.set(
+                audit.email,
+                [audit]
+            )
+        }
+    }
+
+    for(const [email,audits] of groupedAudits){
+
+        const auditsHTML = audits.map((audit)=>{
+
+            const changedTools = audit.newAudit.toolResults.flatMap((newTool)=>{
+
+                const oldTool = audit.oldAudit.toolResults.find((tool)=>{
+                    return tool.currentTool === newTool.currentTool
+                })
+
+                if(!oldTool){
+                    return []
+                }
+
+                const changed =
+                    (oldTool.recommendedTool !== newTool.recommendedTool) ||
+                    (oldTool.recommendedPlan !== newTool.recommendedPlan) ||
+                    (oldTool.optimizedMonthlySpend !== newTool.optimizedMonthlySpend)
+
+                if(!changed){
+                    return []
+                }
+
+                return [{
+                    oldTool,
+                    newTool
+                }]
+            })
+
+            const hasSavingsChanged =
+                audit.oldAudit.totalMonthlySavings !==
+                audit.newAudit.totalMonthlySavings
+
+            //Skip audits where nothing meaningful changed
+            if(
+                changedTools.length === 0 &&
+                !hasSavingsChanged
+            ){
+                return ""
+            }
+
+            const changedToolsHTML = changedTools.map(({ oldTool,newTool })=>{
+
+                return `
+                    <li style="margin-bottom:16px;">
+
+                        <strong>
+                            ${newTool.currentTool}
+                        </strong>
+
+                        <br/>
+
+                        Previous Recommendation:
+                        ${oldTool.recommendedTool}
+                        (${oldTool.recommendedPlan})
+
+                        <br/>
+
+                        New Recommendation:
+                        ${newTool.recommendedTool}
+                        (${newTool.recommendedPlan})
+
+                        <br/>
+
+                        Previous Optimized Spend:
+                        $${oldTool.optimizedMonthlySpend}
+
+                        <br/>
+
+                        New Optimized Spend:
+                        $${newTool.optimizedMonthlySpend}
+
+                    </li>
+                `
+            }).join("")
+
+            return `
+                <div
+                    style="
+                        border:1px solid #e5e7eb;
+                        border-radius:12px;
+                        padding:20px;
+                        margin-bottom:24px;
+                    "
+                >
+
+                    <h2>
+                        Audit ${audit.id}
+                    </h2>
+
+                    <p>
+                        AI pricing updates affected
+                        your stored audit.
+                    </p>
+
+                    <p>
+                        Previous Monthly Savings:
+                        <strong>
+                            $${audit.oldAudit.totalMonthlySavings}
+                        </strong>
+                    </p>
+
+                    <p>
+                        New Estimated Monthly Savings:
+                        <strong>
+                            $${audit.newAudit.totalMonthlySavings}
+                        </strong>
+                    </p>
+
+                    <h3>
+                        What changed
+                    </h3>
+
+                    <ul>
+                        ${changedToolsHTML}
+                    </ul>
+
+                    <a
+                        href="${process.env.NEXT_PUBLIC_BASE_URL}/audit/diff-view/${audit.id}"
+                        style="
+                            display:inline-block;
+                            margin-top:12px;
+                            padding:12px 18px;
+                            background:#111827;
+                            color:white;
+                            text-decoration:none;
+                            border-radius:8px;
+                        "
+                    >
+                        Re-run Audit
+                    </a>
+
+                </div>
+            `
+        }).join("")
+
+        //Skip sending email if no audits actually changed
+        if(!auditsHTML.trim()){
+            continue
+        }
+
+        await resend.emails.send({
+
+            from:"onboarding@resend.dev",
+
+            to:email,
+
+            subject:
+                "Pricing updates affected your AI audit",
+
+            html:`
+                <div
+                    style="
+                        font-family:sans-serif;
+                        max-width:700px;
+                        margin:auto;
+                    "
+                >
+
+                    <h1>
+                        Pricing changes detected
+                    </h1>
+
+                    <p>
+                        Some AI pricing updates changed
+                        recommendations in your saved audits.
+                    </p>
+
+                    ${auditsHTML}
+
+                </div>
+            `
+        })
+    }
 }

@@ -1,11 +1,13 @@
-import { 
-    AuditInput,
-    AuditResult,
-    ToolAuditResult,
-    aiPlan,
-    apiPlan
-} from "./types"
-
+import { supabase } from "@/lib/supabase"
+import {
+   AuditInput,
+   AuditResult,
+   ToolAuditResult,
+   aiPlan,
+   apiPlan,
+   AffectedAudit
+} from "@/lib/types"
+import { api_direct,aiPlans } from "./ai-tools"
 import {
     findCurrentPlan,
     findCheapestSameVendorPlan,
@@ -14,109 +16,53 @@ import {
     findCheapestAlternativeAPI,
 } from "./matching"
 
-import { aiPlans,api_direct } from "./ai-tools"
-import { supabase } from "./supabase"
-
-
-async function getOrCreatePricingVersion() {
-
-    if(!supabase) return null 
-
+export async function getLatestPricingVersion(){
+    if(!supabase) return null
     const snapshot = {
         aiPlans,
         api_direct
     }
+    const { data: existingVersion,error } = await supabase
+      .from("pricing_version")
+      .select("*")
+      .eq("snapshot",JSON.stringify(snapshot))
+      .maybeSingle()
 
-    const { data:existingVersion, error:findError } = await supabase
-        .from("pricing_version")
-        .select("id")
-        .eq("snapshot", JSON.stringify(snapshot))
-        .maybeSingle()
-
-    if(findError){
-        throw new Error(findError.message)
+    if(error){
+      throw new Error(error.message)
     }
 
     if(existingVersion){
-        return existingVersion.id
+      return existingVersion
     }
 
-    const { data:newVersion, error:createError } = await supabase
-        .from("pricing_version")
-        .insert({
-            snapshot:snapshot
-        })
-        .select("id")
-        .single()
+    const { data: newVersion,error: insertError } = await supabase
+      .from("pricing_version")
+      .insert({
+        snapshot
+      })
+      .select()
+      .single()
 
-    if(createError){
-        throw new Error(createError.message)
+    if(insertError){
+      throw new Error(insertError.message)
     }
-
-    return newVersion.id
+    return newVersion
 }
+export function hasAuditChanged(oldAudit: AuditResult,newAudit: AuditResult){
+   if(oldAudit.totalMonthlySavings !== newAudit.totalMonthlySavings){
+      return true
+   }
 
-async function saveAuditResult(auditResult:AuditResult,email:string,auditInput:AuditInput) {
+   if(oldAudit.totalAnnualSavings !== newAudit.totalAnnualSavings){
+      return true
+   }
 
-    if(!supabase){
-        return null
-    }
+   if(JSON.stringify(oldAudit.toolResults) !== JSON.stringify(newAudit.toolResults)){
+      return true
+   }
 
-  const { data: audit, error: auditError } = await supabase
-    .from("audits")
-    .insert([
-      {
-        total_current_monthly_spend:auditResult.totalCurrentMonthlySpend,
-        total_optimized_monthly_spend:auditResult.totalOptimizedMonthlySpend,
-        total_monthly_savings:auditResult.totalMonthlySavings,
-        total_annual_savings:auditResult.totalAnnualSavings,
-        summary:auditResult.summary ?? null
-      }
-    ])
-    .select()
-    .single()
-
-  if (auditError) {
-    throw auditError
-  }
-
-  const toolResults = auditResult.toolResults.map((tool:ToolAuditResult) => ({
-    audit_id: audit.id,
-    currentTool: tool.currentTool,
-    currentPlan: tool.currentPlan,
-    recommendedTool: tool.recommendedTool,
-    recommendedPlan: tool.recommendedPlan,
-    currentMonthlySpend: tool.currentMonthlySpend,
-    optimizedMonthlySpend: tool.optimizedMonthlySpend,
-    monthlySavings: tool.monthlySavings,
-    annualSavings: tool.annualSavings,
-    reason: tool.reason
-  }))
-
-  const { error: toolResultsError } = await supabase
-    .from("audit_tool_results")
-    .insert(toolResults)
-
-  if (toolResultsError) {
-    throw toolResultsError
-  }
-
-    const pricing_id = await getOrCreatePricingVersion()
-    const { error:createError } = await supabase
-    .from("stored_audits")
-    .insert({
-        id: audit.id,
-        input: auditInput,
-        output: auditResult,
-        pricing: pricing_id,
-        email: email,
-    })
-    .select()
-
-    if(createError){
-        throw new Error(createError.message)
-    }
-  return audit
+   return false
 }
 
 function calcAPISpend(plan: apiPlan, inputTokens: number, outputTokens: number): number {
@@ -124,7 +70,7 @@ function calcAPISpend(plan: apiPlan, inputTokens: number, outputTokens: number):
     return Math.round(cost * 100) / 100
 }
 
-export async function generateAudit(data: AuditInput,email: string): Promise<AuditResult>{
+export async function estimateAudit(data: AuditInput): Promise<AuditResult>{
 
     let totalCurrentMonthlySpend = 0
     let totalOptimizedMonthlySpend = 0
@@ -229,65 +175,7 @@ export async function generateAudit(data: AuditInput,email: string): Promise<Aud
     }else if (totalMonthlySavings < 100) {
         fallbackSummary = "Your current AI stack already appears reasonably cost-efficient for the reported workload."
     }
-    let summary = fallbackSummary
-
-    try {
-        const prompt = `
-        You are an AI infrastructure cost optimization expert.
-
-        Generate a personalized summary in around 100 words.
-
-        Requirements:
-        - Professional and concise
-        - Mention monthly and annual savings
-        - Mention important optimization opportunities
-        - Mention if the stack already looks efficient
-        - Mention Credex naturally ONLY if savings exceed $500/month
-        - No bullet points
-        - No hype or exaggerated claims
-
-        Audit Data:
-        ${JSON.stringify({
-        totalCurrentMonthlySpend,
-        totalOptimizedMonthlySpend,
-        totalMonthlySavings,
-        totalAnnualSavings,
-        toolResults
-        }, null, 2)}
-        `
-
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`,
-            {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                contents: [
-                {
-                    parts: [
-                    {
-                        text: prompt
-                    }
-                    ]
-                }
-                ]
-            })
-            }
-        )
-
-        if (response.ok) {
-            const data = await response.json()
-            const aiSummary = data?.candidates?.[0]?.content?.parts?.[0]?.text
-            if (aiSummary) {
-            summary = aiSummary.trim()
-            }
-        }
-
-    } catch (error) {
-        console.error("Gemini summary generation failed:", error)
-    }
+    const summary = fallbackSummary
 
     const result: AuditResult = {
         totalCurrentMonthlySpend,
@@ -298,15 +186,48 @@ export async function generateAudit(data: AuditInput,email: string): Promise<Aud
         toolResults
     }
 
-    let audit = null
-    try{
-        audit = await saveAuditResult(result,email,data)
-    }catch(error){
-        console.error("Audit not saved publicly in supabase.",error)
-    }
+    return result
+}
 
-    return {
-        ...result,
-        id: audit?.id || null
-    }
+export async function detectPricingChanges(){
+
+    if(!supabase) return null
+   const latestPricingVersion = await getLatestPricingVersion()
+
+   const { data:storedAudits, error } = await supabase
+      .from("stored_audits")
+      .select("*")
+
+   if(error){
+      throw new Error(error.message)
+   }
+
+   const affectedAudits: AffectedAudit[] = []
+
+   for(const audit of storedAudits){
+      if(audit.pricing === latestPricingVersion.id){
+         continue
+      }
+
+      const oldAudit: AuditResult = audit.output
+      const auditInput: AuditInput = audit.input
+
+      const newAudit: AuditResult = await estimateAudit(auditInput)
+      const changed = hasAuditChanged(oldAudit,newAudit)
+
+      if(changed){
+         affectedAudits.push({
+            id:audit.id,
+            email:audit.email,
+
+            oldAudit,
+            newAudit,
+
+            oldPricingVersion:audit.pricing,
+            newPricingVersion:latestPricingVersion.id
+         })
+      }
+   }
+
+   return affectedAudits
 }
